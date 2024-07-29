@@ -12,7 +12,8 @@ from django.template.loader import get_template
 from xhtml2pdf import pisa
 import io
 from django.contrib.auth.decorators import login_required
-from base.form import AddToCart
+from base.form import AddProduct
+from base.models import Cart, Products
 
 
 
@@ -42,20 +43,44 @@ class CreateOrderView(View):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
+
 class VerifyPaymentView(View):
     def post(self, request, *args, **kwargs):
         try:
-            data = json.loads(request.body)
-            order_id = data.get("order_id")
+            razorpay_payment_id = request.POST.get('razorpay_payment_id')
+            razorpay_order_id = request.POST.get('razorpay_order_id')
+            razorpay_signature = request.POST.get('razorpay_signature')
 
-            if is_razorpay_payment_order_successful(order_id):
-                return JsonResponse({"status": "success", "order_id": order_id})
+            # Initialize Razorpay client
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+
+            # Fetch order details from Razorpay
+            order = client.order.fetch(razorpay_order_id)
+
+            # Verify the payment signature
+            generated_signature = client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+
+            if generated_signature:
+                # Payment is verified
+                return JsonResponse({"status": "success", "order_id": razorpay_order_id})
             else:
+                # Payment verification failed
                 raise ValidationError("Payment verification failed")
+
         except ValidationError as e:
             return JsonResponse({"error": str(e)}, status=400)
+        except razorpay.errors.RazorpayError as e:
+            # Handle Razorpay-specific errors
+            return JsonResponse({"error": "Razorpay error: " + str(e)}, status=400)
         except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+            # Handle general errors
+            return JsonResponse({"error": "An unexpected error occurred: " + str(e)}, status=500)
+        
+
 
 def generate_pdf_receipt(order_id):
     order_details = get_razorpay_client().order.fetch(order_id=order_id)
@@ -78,7 +103,6 @@ def payment_form(request):
     return render(request, 'index.html', {'RAZORPAY_KEY_ID': settings.RAZORPAY_KEY_ID})
 
 
-# Create your views here.
 
 def register(request):
     if request.method == 'POST':
@@ -123,28 +147,41 @@ def Signin(request):
             return redirect("home")
         else:
             messages.error(request, "Invalid UserName or Password")
-            return redirect('Signin')
+            return redirect('signin')
 
     return render(request, 'login.html')
 
 def Signout(request):
+    print(request.user)
+    print(request.user.username)
+    breakpoint()
+
     logout(request)
     return redirect('home')
 
 def home(request):
-    return render(request,'home.html')
+    items = Products.objects.all()
+    return render(request, 'home.html', {'items': items})
 
 
 
 @login_required(login_url='signin')
 def item(request):
     if request.method == 'POST':
-        form = AddToCart(request.POST)
+        form = AddProduct(request.POST)
         if form.is_valid():
             form.save()
             return redirect('home')
     else:
-        form = AddToCart()
+        form = AddProduct()
 
     context = {'form': form}
     return render(request, 'item_cart.html', context)
+
+
+def cart(request,pk):
+    product=Products.objects.get(id=pk)
+    user=request.user
+    price=product.price
+    Cart.objects.create(product=product,user=user,price=price)
+    return render(request,'cart.html')

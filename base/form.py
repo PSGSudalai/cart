@@ -1,8 +1,8 @@
 from django import forms
 
-from base.models import Item
+from base.models import Products
 
-class AddToCart(forms.ModelForm):
+class AddProduct(forms.ModelForm):
     class Meta:
-        model=Item
+        model=Products
         fields=['item','price']

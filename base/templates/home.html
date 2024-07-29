@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     
-    <!-- Additional CSS -->
+    <title>Product Page</title>
+    
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -81,7 +82,6 @@
             height: 350px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s;
-            
         }
 
         .inner-card:hover {
@@ -158,134 +158,49 @@
                 width: 90%;
             }
         }
-    </style> 
-        <script>
-            function handlePaymentSuccess(orderId) {
-                const successMessage = document.getElementById('success-message');
-                successMessage.style.display = 'block';
-                document.getElementById('ok-button').onclick = function() {
-                    window.location.href = `/download-receipt/?order_id=${orderId}`;
-                };
-            }
-    
-            function simulatePaymentSuccess() {
-                const exampleOrderId = 'order_ABCDEFGHIJKL'; // Replace with actual order ID from payment gateway
-                handlePaymentSuccess(exampleOrderId);
-            }
-    
-            window.onload = function() {
-                simulatePaymentSuccess();
+    </style>
+
+    <script>
+        function handlePaymentSuccess(orderId) {
+            const successMessage = document.getElementById('success-message');
+            successMessage.style.display = 'block';
+            document.getElementById('ok-button').onclick = function() {
+                window.location.href = `/download-receipt/?order_id=${orderId}`;
             };
-        </script>
-    
-    <title>Product Page</title>
+        }
+
+        function simulatePaymentSuccess() {
+            const exampleOrderId = 'order_ABCDEFGHIJKL'; // Replace with actual order ID from payment gateway
+            handlePaymentSuccess(exampleOrderId);
+        }
+
+        window.onload = function() {
+            simulatePaymentSuccess();
+        };
+    </script>
 </head>
 <body>
 
     {% include "nav.html" %}
-    <a class="create-item-button" href="{% url 'item' %}">Create Item</a>
-
-    <!-- <div id="success-message" style="display: none;">
-        <p>Payment successful! Click OK to download your receipt.</p>
-        <button id="ok-button">OK</button>
-    </div> -->
-    <!-- <nav class="navbar">
-        <a href="#" class="navbar-brand">MyStore</a>
-        <ul class="navbar-nav">
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Products</a></li>
-            <li><a href="#">Contact</a></li>
-        </ul>
-    </nav>
-
-    <section class="hero-section">
-        <div>
-            <h1>Welcome to MyStore</h1>
-            <p>Find the best products at the best prices</p>
-        </div>
-    </section> -->
+    <a class="create-item-button" href="{% url 'item' %}">Create Products</a>
 
     <div class="cards">
+        {% for item in items %}
         <div class="inner-card">
             <div class="img-box">
-                <img src="{% static 'images/p1.png' %}" alt="Product Image">
+                <img src="{% static 'images/default-product.png' %}" alt="Product Image"> <!-- Use a default image or customize as needed -->
             </div>
             <div class="detail-box">
-                <h6>Ring</h6>
-                <h6>Price <span>₹200</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(20000)">BUY</button>
+                <h6>{{ item.item }}</h6>
+                <h6>Price <span>₹{{ item.price }}</span></h6>
+                {% if request.user.is_authenticated %}
+                <button class="btn btn-success" onclick="initiatePayment({{item.price}} * 100)">BUY</button>
+                {% else %}
+                <button class="btn btn-success"><a href="{% url 'signin' %}" style="color: inherit; text-decoration: none;">BUY</a></button>
+                {% endif %}
             </div>
         </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p2.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Necklace</h6>
-                <h6>Price <span>₹500</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(50000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p3.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Bracelet</h6>
-                <h6>Price <span>₹150</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(15000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p4.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Earrings</h6>
-                <h6>Price <span>₹100</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(10000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p1.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Ring</h6>
-                <h6>Price <span>₹300</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(30000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p2.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Necklace</h6>
-                <h6>Price <span>₹600</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(60000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p3.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Bracelet</h6>
-                <h6>Price <span>₹250</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(25000)">BUY</button>
-            </div>
-        </div>
-        <div class="inner-card">
-            <div class="img-box">
-                <img src="{% static 'images/p4.png' %}" alt="Product Image">
-            </div>
-            <div class="detail-box">
-                <h6>Earrings</h6>
-                <h6>Price <span>₹200</span></h6>
-                <button class="btn btn-success" id="pay" onclick="initiatePayment(20000)">BUY</button>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 
     <footer class="footer">
@@ -294,7 +209,6 @@
 
     <script>
         function initiatePayment(amount) {
-            document.getElementById('pay').click()
             var options = {
                 "key": "rzp_test_sYDXizFjDxb4Vw", // Your Razorpay Key ID
                 "amount": amount, // Amount in paise
@@ -334,4 +248,3 @@
     </script>
 </body>
 </html>
-
