@@ -83,7 +83,7 @@
 <body>
     <div class="container">
         <h2>Sign In</h2>
-        <form method="post" action="">
+        <form method="post" action="{% url 'signin'  %}">
             {% csrf_token %}
             <div class="form-group">
                 <label for="username">Username</label>
@@ -95,7 +95,7 @@
             </div>
             <input class="btn" type="submit" value="Login">
         </form>
-        <p>Haven't signed up yet? <a class="btn" href="">SignUp</a></p>
+        <p>Haven't signed up yet? <a class="btn" href="{% url 'register' %}">SignUp</a></p>
         {% if messages %}
             <ul class="messages">
                 {% for message in messages %}

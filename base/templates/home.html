@@ -183,6 +183,8 @@
 <body>
 
     {% include "nav.html" %}
+    <a class="create-item-button" href="{% url 'item' %}">Create Item</a>
+
     <!-- <div id="success-message" style="display: none;">
         <p>Payment successful! Click OK to download your receipt.</p>
         <button id="ok-button">OK</button>
@@ -221,7 +223,7 @@
             <div class="detail-box">
                 <h6>Necklace</h6>
                 <h6>Price <span>₹500</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(50000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(50000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -231,7 +233,7 @@
             <div class="detail-box">
                 <h6>Bracelet</h6>
                 <h6>Price <span>₹150</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(15000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(15000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -241,7 +243,7 @@
             <div class="detail-box">
                 <h6>Earrings</h6>
                 <h6>Price <span>₹100</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(10000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(10000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -251,7 +253,7 @@
             <div class="detail-box">
                 <h6>Ring</h6>
                 <h6>Price <span>₹300</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(30000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(30000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -261,7 +263,7 @@
             <div class="detail-box">
                 <h6>Necklace</h6>
                 <h6>Price <span>₹600</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(60000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(60000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -271,7 +273,7 @@
             <div class="detail-box">
                 <h6>Bracelet</h6>
                 <h6>Price <span>₹250</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(25000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(25000)">BUY</button>
             </div>
         </div>
         <div class="inner-card">
@@ -281,7 +283,7 @@
             <div class="detail-box">
                 <h6>Earrings</h6>
                 <h6>Price <span>₹200</span></h6>
-                <button class="btn btn-success" onclick="initiatePayment(20000)">BUY</button>
+                <button class="btn btn-success" id="pay" onclick="initiatePayment(20000)">BUY</button>
             </div>
         </div>
     </div>
@@ -292,6 +294,7 @@
 
     <script>
         function initiatePayment(amount) {
+            document.getElementById('pay').click()
             var options = {
                 "key": "rzp_test_sYDXizFjDxb4Vw", // Your Razorpay Key ID
                 "amount": amount, // Amount in paise

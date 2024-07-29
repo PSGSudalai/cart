@@ -77,7 +77,7 @@
 <div class="navbar">
     
 <div>
-    {% if request.user.is_authenticated %}
+    
         <h3>Welcome, {{ request.user.username }}</h3>
 
 </div>
@@ -86,9 +86,9 @@
 </div>
 
     {% if request.user.is_authenticated %}
-        <a href=""><button class="login-button">Logout</button></a>
+        <a href="{% url 'signout' %}"><button class="login-button">Logout</button></a>
     {% else %}
-        <a href=""><button class="login-button">Login</button></a>
+        <a href="{% url 'signin' %}"><button class="login-button">Login</button></a>
     {% endif %}
  
 </div>

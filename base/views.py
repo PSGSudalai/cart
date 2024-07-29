@@ -11,6 +11,10 @@ from django.http import HttpResponse, JsonResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 import io
+from django.contrib.auth.decorators import login_required
+from base.form import AddToCart
+
+
 
 def get_razorpay_client():
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
@@ -24,6 +28,7 @@ def create_razorpay_payment_order(amount, currency, receipt):
         data={"amount": int(amount) * 100, "currency": currency, "receipt": receipt}
     )
 
+@login_required(login_url='signin')
 class CreateOrderView(View):
     def post(self, request, *args, **kwargs):
         try:
@@ -90,7 +95,10 @@ def register(request):
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'Email address is already in use. Please use another email.')
 
-        elif password1 == password2:
+        elif password1 != password2:
+            messages.error(request, 'Passwords do not match. Please try again.')
+
+        else:
             user = User.objects.create_user(
                 username=username,
                 email=email,
@@ -98,14 +106,13 @@ def register(request):
                 first_name=firstname,
                 last_name=lastname
             )
-        login(request,user)
-        messages.success(request, 'Registration successful')
-        return redirect('home')
-    else:
-        messages.error(request, 'Passwords do not match. Please try again.')
-
+            user.save()
+            login(request, user)
+            messages.success(request, 'Registration successful')
+            return redirect('home')
     return render(request, 'register.html')
-                
+
+
 def Signin(request):
     if request.method == "POST":
         username = request.POST.get('username')  
@@ -126,3 +133,18 @@ def Signout(request):
 
 def home(request):
     return render(request,'home.html')
+
+
+
+@login_required(login_url='signin')
+def item(request):
+    if request.method == 'POST':
+        form = AddToCart(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('home')
+    else:
+        form = AddToCart()
+
+    context = {'form': form}
+    return render(request, 'item_cart.html', context)
