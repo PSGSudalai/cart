@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+<style>
+    /* Reset some default browser styles */
+    body, h1, p {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Styling for the navigation bar */
+    .navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: white;
+        color: #fff;
+        padding: 10px 20px;
+    }
+
+    /* Styling for the logo and title */
+    .navbar-left {
+        display: flex;
+  
+    }
+
+    .navbar-title {
+        font-size: 24px;
+        font-weight: bold;
+        
+        color:black;
+        align-items: center;
+
+    }
+
+    /* Styling for the login button */
+    .login-button {
+        background-color: #0074D9; /* Light blue color, you can change this */
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    /* Styling for the search bar */
+    .search-form {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 200px; /* Set the width to 200px */
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .search-button {
+        background-color: #3498DB; /* Light blue color for the button, you can change this */
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+
+<div class="navbar">
+    
+<div>
+    {% if request.user.is_authenticated %}
+        <h3>Welcome, {{ request.user.username }}</h3>
+
+</div>
+<div class="navbar-center">
+    <h1 class="navbar-title">Your Title</h1>
+</div>
+
+    {% if request.user.is_authenticated %}
+        <a href=""><button class="login-button">Logout</button></a>
+    {% else %}
+        <a href=""><button class="login-button">Login</button></a>
+    {% endif %}
+ 
+</div>
+
+
+</body>
+</html>
+
+
+
+
+
