@@ -35,7 +35,8 @@
         }
 
         .cart-total {
-            text-align: right;
+            margin-left:200px;
+            text-align: center;
             padding: 10px;
             background-color: #f8f9fa;
             font-size: 1.2em;
@@ -67,23 +68,25 @@
             <div>Product</div>
             <div>Price</div>
             <div>Quantity</div>
+            <div>Remove</div>
         </div>
         {% for item in cart_items %}
         <div class="cart-item">
-            <div>{{ item.product.name }}</div>
+            <div>{{ item.product.item }}</div>
             <div>₹{{ item.product.price }}</div>
             <div>{{ item.quantity }}</div>
+            <div><button class="btn"><a href="{% url 'delete' item.id %}" style="color: inherit; text-decoration: none;">Remove</a></button></div>
         </div>
         {% endfor %}
         <div class="cart-total">
-            Total: ₹1
+            Total:{{cart_total}}
         </div>
         <button id="checkout-button" class="btn">Proceed to Checkout</button>
     </div>
 
     <script>
         document.getElementById('checkout-button').onclick = function () {
-            var totalAmount = 1 * 100; // Convert to paise
+            var totalAmount = {{ cart_total }} * 100; // Convert to paise
 
             // Create order on the server
             var xhr = new XMLHttpRequest();

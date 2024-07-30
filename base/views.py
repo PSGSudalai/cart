@@ -17,6 +17,7 @@ from base.models import Cart, Products
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, get_object_or_404
 from .models import Order 
+from reportlab.pdfgen import canvas 
 
 
 def get_razorpay_client():
@@ -177,7 +178,7 @@ def home(request):
 @login_required(login_url='signin')
 def item(request):
     if request.method == 'POST':
-        form = AddProduct(request.POST)
+        form = AddProduct(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             return redirect('home')
@@ -187,18 +188,40 @@ def item(request):
     context = {'form': form}
     return render(request, 'item_cart.html', context)
 
+@login_required(login_url='signin')
+def cart(request, pk):
+    cart_item = get_object_or_404(Products, id=pk)
+    
+    user = request.user
+    quantity = int(request.POST.get('quantity', 1))
+    price = cart_item.price
+    total = price * quantity  # Calculate total price based on quantity
 
-def cart(request,pk):
-    product=Products.objects.get(id=pk)
-    user=request.user
-    price=product.price
-    Cart.objects.create(product=product,user=user,price=price, quantity =1)
-    return render(request,'cart.html')
+    # Try to get the cart item for the user and product
+    try:
+        cart_product = Cart.objects.get(product=cart_item, user=user)
+        cart_product.quantity += quantity
+        cart_product.total = cart_product.price * cart_product.quantity
+        cart_product.save()
+    except Cart.DoesNotExist:
+        Cart.objects.create(product=cart_item, user=user, price=price, quantity=quantity, total=total)
+
+    return redirect('home')
+
+
+def delete(request,pk):
+    cart=Cart.objects.get(id=pk)
+    cart.delete()
+    return redirect('cart-view')
 
 @login_required(login_url='signin')
 def cart_view(request):
     cart_items = Cart.objects.filter(user=request.user)
-    return render(request, 'cart.html', {'cart_items': cart_items})
+    cart_total=0
+    for i in cart_items:
+        cart_total +=i.total
+    context = {'cart_items': cart_items, 'cart_total': cart_total}
+    return render(request, 'cart.html', context)
 
 
 client = razorpay.Client(auth=("rzp_test_sYDXizFjDxb4Vw", "mWbFEV0lUB2Mzp71x57wZSw2"))
@@ -239,6 +262,14 @@ def verify_payment(request):
             razorpay_order_id = data['razorpay_order_id']
             razorpay_signature = data['razorpay_signature']
 
+            # Assume `cart` is fetched based on some logic, e.g., from session or user
+            
+            cart_items = Cart.objects.filter(user=request.user)  # Replace with your method to get the cart
+
+            totalamt = 0
+            for i in cart_items:
+                totalamt += i.total
+
             # Verify payment signature
             client.utility.verify_payment_signature({
                 'razorpay_order_id': razorpay_order_id,
@@ -249,11 +280,35 @@ def verify_payment(request):
             # Save order details
             order = Order.objects.create(
                 order_id=razorpay_order_id,
-                total_amount=100 / 100  # Convert back to rupees
+                total_amount=totalamt   # Convert back to rupees
             )
 
-            return JsonResponse({'status': 'success'})
+            # Generate PDF receipt
+            pdf_path = generate_pdf(order)
+            cart_items.delete()
+
+            return JsonResponse({'status': 'success', 'pdf_url': pdf_path})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
+
+def generate_pdf(order):
+    # Path to save the PDF
+    pdf_path = f"order_{order.order_id}.pdf"
+
+    # Create a PDF with ReportLab
+    c = canvas.Canvas(pdf_path)
+    c.drawString(100, 750, f"Order ID: {order.order_id}")
+    c.drawString(100, 730, f"Total Amount: {order.total_amount}")
+
+    # Add more order details as needed
+    c.save()
+
+    # In a real-world scenario, you would save this to a media directory and serve it properly
+    # For example:
+    # pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+
+    return pdf_path
