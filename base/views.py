@@ -95,7 +95,7 @@ def generate_pdf_receipt(order_id):
     pisa_status = pisa.CreatePDF(io.BytesIO(html.encode("UTF-8")), dest=response)
     if pisa_status.err:
         return HttpResponse(f'We had some errors with code {pisa_status.err} <pre>{html}</pre>')
-    return response
+    return response 
 
 def download_receipt(request):
     order_id = request.GET.get('order_id')
