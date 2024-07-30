@@ -14,6 +14,7 @@ import io
 from django.contrib.auth.decorators import login_required
 from base.form import AddProduct
 from base.models import Cart, Products
+from django.views.decorators.csrf import csrf_exempt
 
 
 
@@ -183,5 +184,68 @@ def cart(request,pk):
     product=Products.objects.get(id=pk)
     user=request.user
     price=product.price
-    Cart.objects.create(product=product,user=user,price=price)
+    Cart.objects.create(product=product,user=user,price=price, quantity =1)
     return render(request,'cart.html')
+
+@login_required(login_url='signin')
+def cart_view(request):
+    cart_items = Cart.objects.filter(user=request.user)
+    return render(request, 'cart.html', {'cart_items': cart_items})
+
+
+client = razorpay.Client(auth=("rzp_test_sYDXizFjDxb4Vw", "mWbFEV0lUB2Mzp71x57wZSw2"))
+
+@csrf_exempt
+def verify_payment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            razorpay_payment_id = data['razorpay_payment_id']
+            razorpay_order_id = data['razorpay_order_id']
+            razorpay_signature = data['razorpay_signature']
+
+            params_dict = {
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_signature': razorpay_signature
+            }
+
+            # Verify the signature
+            result = client.utility.verify_payment_signature(params_dict)
+            if result:
+                # Handle successful payment
+                return JsonResponse({'status': 'Payment verified successfully!'})
+            else:
+                # Handle unsuccessful payment
+                return JsonResponse({'status': 'Payment verification failed!'}, status=400)
+
+        except Exception as e:
+            return JsonResponse({'status': 'Error occurred: ' + str(e)}, status=400)
+
+    return JsonResponse({'status': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def create_order(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            amount = data.get('amount')  # Amount in paise
+            currency = 'INR'
+
+            # Create an order on Razorpay
+            razorpay_order = client.order.create(dict(amount=amount, currency=currency, payment_capture='0'))
+
+            # Save order details in your database if necessary
+            order_id = razorpay_order['id']
+
+            return JsonResponse({
+                'order_id': order_id,
+                'razorpay_key': settings.RAZORPAY_KEY_ID,
+                'amount': amount
+            })
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)
