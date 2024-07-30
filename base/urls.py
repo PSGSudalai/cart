@@ -13,5 +13,6 @@ urlpatterns = [
     path('cart-view/', views.cart_view, name='cart-view'),
     path('verify-payment/', views.verify_payment, name='verify'),
     path('create-order/', views.create_order, name='create_order'),
+    path('download-receipt/', views.download_receipt, name='download_receipt'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -18,3 +18,12 @@ class Cart(models.Model):
   
     def __str__(self):
         return self.product
+
+
+class Order(models.Model):
+    order_id = models.CharField(max_length=100, unique=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    # Add other fields as needed
+
+    def __str__(self):
+        return self.order_id
