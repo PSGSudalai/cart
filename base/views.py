@@ -17,6 +17,7 @@ from reportlab.lib.units import inch
 from .models import Cart, Products, Order
 from .form import AddProduct
 
+
 def get_razorpay_client():
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
@@ -26,9 +27,9 @@ def generate_pdf(order):
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)  # Save to media directory
 
     # Company details
-    company_name = "Your Company Name"
-    gst_number = "Your GST Number"
-    pan_number = "Your PAN Number"
+    company_name = "Flipkart"
+    gst_number = "1234327tfc3"
+    pan_number = "PSGW8545G"
 
     # Create a PDF with ReportLab
     c = canvas.Canvas(full_pdf_path, pagesize=letter)
@@ -121,6 +122,7 @@ def item(request):
         form = AddProduct(request.POST, request.FILES)
         if form.is_valid():
             form.save()
+            messages.success(request,'Product created successfully!')
             return redirect('home')
     else:
         form = AddProduct()
@@ -128,6 +130,7 @@ def item(request):
     return render(request, 'item_cart.html', context)
 
 @login_required(login_url='signin')
+
 def cart(request, pk):
     cart_item = get_object_or_404(Products, id=pk)
     user = request.user
@@ -140,8 +143,10 @@ def cart(request, pk):
         cart_product.quantity += quantity
         cart_product.total = cart_product.price * cart_product.quantity
         cart_product.save()
+        messages.success(request, f'Updated {cart_item.item} quantity to {cart_product.quantity}.')
     except Cart.DoesNotExist:
         Cart.objects.create(product=cart_item, user=user, price=price, quantity=quantity, total=total)
+        messages.success(request, f'Added {cart_item.item} to your cart.')
 
     return redirect('home')
 
@@ -149,6 +154,8 @@ def delete(request, pk):
     cart = Cart.objects.get(id=pk)
     cart.delete()
     return redirect('cart-view')
+def back(request):
+    return redirect('home')
 
 @login_required(login_url='signin')
 def cart_view(request):
@@ -222,15 +229,18 @@ def verify_payment(request):
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
+
+
+
 @require_POST
-def update_quantity(request, item_id):
+def update_quantity(request, pk):
+    cart_item = get_object_or_404(Cart, id=pk)
     action = request.POST.get('action')
-    cart_item = get_object_or_404(Cart, id=item_id)
 
     if action == 'increase':
         cart_item.quantity += 1
     elif action == 'decrease' and cart_item.quantity > 1:
         cart_item.quantity -= 1
-
+    cart_item.total = cart_item.quantity* cart_item.price
     cart_item.save()
-    return JsonResponse({'success': True})
+    return redirect('cart-view')

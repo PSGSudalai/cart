@@ -57,6 +57,18 @@
         .btn:hover {
             background-color: #218838;
         }
+        .btn-secondary {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #070707;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            text-decoration: none;
+        }
 
         .quantity-controls {
             display: flex;
@@ -86,6 +98,7 @@
             <div>Product</div>
             <div>Price</div>
             <div>Quantity</div>
+            <div>Amount</div>
             <div>Remove</div>
         </div>
         {% for item in cart_items %}
@@ -93,18 +106,34 @@
             <div>{{ item.product.item }}</div>
             <div>₹{{ item.product.price }}</div>
             <div class="quantity-controls">
-                <button class="btn-quantity-decrease">-</button>
+                <form method="POST" action="{% url 'update_quantity' item.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="decrease">
+                    <button type="submit" class="btn-quantity-decrease">-</button>
+                </form>
                 <span>{{ item.quantity }}</span>
-                <button class="btn-quantity-increase">+</button>
+                <form method="POST" action="{% url 'update_quantity' item.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="increase">
+                    <button type="submit" class="btn-quantity-increase">+</button>
+                </form>
             </div>
-            <div><button class="btn"><a href="{% url 'delete' item.id %}" style="color: inherit; text-decoration: none;">Remove</a></button></div>
+            <div>₹{{item.total }}</div>
+            <div>
+                <form method="POST" action="{% url 'delete' item.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn">Remove</button>
+                </form>
+            </div>
         </div>
-        {% endfor %}
-        <div class="cart-total">
-            Total: ₹{{ cart_total }}
-        </div>
-        <button id="checkout-button" class="btn">Proceed to Checkout</button>
+    {% endfor %}
+    <div class="cart-total">
+        Total: ₹{{ cart_total }}
     </div>
+        <button id="checkout-button" class="btn">Proceed to Checkout</button>
+        <button class="btn-secondary"><a href="{% url 'home' %}" style="color: inherit; text-decoration: none;">Back</a></button>
+    </div>
+    
 
     <script>
         document.getElementById('checkout-button').onclick = function () {

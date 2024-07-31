@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <title>Document</title>
 </head>
 <body>
@@ -19,7 +20,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background-color: white;
+        background-color: rgb(9, 24, 235);
         color: #fff;
         padding: 10px 20px;
     }
@@ -34,7 +35,7 @@
         font-size: 24px;
         font-weight: bold;
         
-        color:black;
+        color:rgb(223, 223, 223);
         align-items: center;
 
     }
@@ -78,20 +79,21 @@
     
 <div>
     
-        <h3>Welcome, {{ request.user.username }}</h3>
+        <h4><i class="fa fa-user" aria-hidden="true" ></i> {{ request.user.username }}</h4>
 
 </div>
 <div class="navbar-center">
     <h1 class="navbar-title">Your Title</h1>
 </div>
-
+<div>
     {% if request.user.is_authenticated %}
         <a href="{% url 'signout' %}"><button class="login-button">Logout</button></a>
     {% else %}
         <a href="{% url 'signin' %}"><button class="login-button">Login</button></a>
     {% endif %}
- 
 </div>
+</div>
+
 
 
 </body>
