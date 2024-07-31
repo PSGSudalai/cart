@@ -1,118 +1,69 @@
-from django.shortcuts import render,redirect
-import json
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.forms import ValidationError
-from django.views import View
-import razorpay
-from django.conf import settings
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.template.loader import get_template
-from xhtml2pdf import pisa
-import io
 from django.contrib.auth.decorators import login_required
-from base.form import AddProduct
-from base.models import Cart, Products
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render, get_object_or_404
-from .models import Order 
-from reportlab.pdfgen import canvas 
-
+from django.views.decorators.http import require_POST
+import razorpay
+import json
+from django.conf import settings
+import os
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
+from .models import Cart, Products, Order
+from .form import AddProduct
 
 def get_razorpay_client():
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
-def is_razorpay_payment_order_successful(order_id):
-    order_response = get_razorpay_client().order.fetch(order_id=order_id)
-    return order_response.get("status") in ["paid"]
+def generate_pdf(order):
+    # Path to save the PDF
+    pdf_path = f"order_{order.order_id}.pdf"
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)  # Save to media directory
 
-def create_razorpay_payment_order(amount, currency, receipt):
-    return get_razorpay_client().order.create(
-        data={"amount": int(amount) * 100, "currency": currency, "receipt": receipt}
-    )
+    # Company details
+    company_name = "Your Company Name"
+    gst_number = "Your GST Number"
+    pan_number = "Your PAN Number"
 
-@login_required(login_url='signin')
-class CreateOrderView(View):
-    def post(self, request, *args, **kwargs):
-        try:
-            data = json.loads(request.body)
-            amount = data.get("amount")
-            currency = data.get("currency", "INR")
-            receipt = data.get("receipt")
+    # Create a PDF with ReportLab
+    c = canvas.Canvas(full_pdf_path, pagesize=letter)
+    width, height = letter
 
-            order = create_razorpay_payment_order(amount, currency, receipt)
-            return JsonResponse(order)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
+    # Header
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(1 * inch, height - 1 * inch, company_name)
+    c.setFont("Helvetica", 12)
+    c.drawString(1 * inch, height - 1.25 * inch, f"GST Number: {gst_number}")
+    c.drawString(1 * inch, height - 1.5 * inch, f"PAN Number: {pan_number}")
 
+    # Invoice details
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(1 * inch, height - 2 * inch, f"Order ID: {order.order_id}")
+    c.drawString(1 * inch, height - 2.25 * inch, f"Total Amount: ₹{order.total_amount}")
 
-class VerifyPaymentView(View):
-    def post(self, request, *args, **kwargs):
-        try:
-            razorpay_payment_id = request.POST.get('razorpay_payment_id')
-            razorpay_order_id = request.POST.get('razorpay_order_id')
-            razorpay_signature = request.POST.get('razorpay_signature')
+    # Date
+    from datetime import datetime
+    c.setFont("Helvetica", 12)
+    c.drawString(1 * inch, height - 2.5 * inch, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
 
-            # Initialize Razorpay client
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+    # Add more details if needed
 
-            # Fetch order details from Razorpay
-            order = client.order.fetch(razorpay_order_id)
+    c.save()
 
-            # Verify the payment signature
-            generated_signature = client.utility.verify_payment_signature({
-                'razorpay_order_id': razorpay_order_id,
-                'razorpay_payment_id': razorpay_payment_id,
-                'razorpay_signature': razorpay_signature
-            })
-
-            if generated_signature:
-                # Payment is verified
-                return JsonResponse({"status": "success", "order_id": razorpay_order_id})
-            else:
-                # Payment verification failed
-                raise ValidationError("Payment verification failed")
-
-        except ValidationError as e:
-            return JsonResponse({"error": str(e)}, status=400)
-        except razorpay.errors.RazorpayError as e:
-            # Handle Razorpay-specific errors
-            return JsonResponse({"error": "Razorpay error: " + str(e)}, status=400)
-        except Exception as e:
-            # Handle general errors
-            return JsonResponse({"error": "An unexpected error occurred: " + str(e)}, status=500)
-        
-
-
-def generate_pdf_receipt(order_id):
-    order_details = get_razorpay_client().order.fetch(order_id=order_id)
-    template = get_template('receipt.html')
-    html = template.render({'order': order_details})
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="receipt_{order_id}.pdf"'
-
-    pisa_status = pisa.CreatePDF(io.BytesIO(html.encode("UTF-8")), dest=response)
-    if pisa_status.err:
-        return HttpResponse(f'We had some errors with code {pisa_status.err} <pre>{html}</pre>')
-    return response 
+    return pdf_path
 
 def download_receipt(request):
     order_id = request.GET.get('order_id')
     order = get_object_or_404(Order, order_id=order_id)
-    receipt_content = f"Receipt for Order ID: {order.order_id}\nTotal Amount: {order.total_amount}"
+    pdf_path = generate_pdf(order)
 
-    response = HttpResponse(receipt_content, content_type='application/text')
-    response['Content-Disposition'] = f'attachment; filename="receipt_{order_id}.txt"'
-    
-    return response
-
-
-def payment_form(request):
-    return render(request, 'index.html', {'RAZORPAY_KEY_ID': settings.RAZORPAY_KEY_ID})
-
-
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+    return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order_id}.pdf")
 
 def register(request):
     if request.method == 'POST':
@@ -125,13 +76,10 @@ def register(request):
 
         if User.objects.filter(username=username).exists():
             messages.error(request, 'Username already exists. Please choose another username.')
-            
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'Email address is already in use. Please use another email.')
-
         elif password1 != password2:
             messages.error(request, 'Passwords do not match. Please try again.')
-
         else:
             user = User.objects.create_user(
                 username=username,
@@ -146,34 +94,26 @@ def register(request):
             return redirect('home')
     return render(request, 'register.html')
 
-
 def Signin(request):
     if request.method == "POST":
-        username = request.POST.get('username')  
-        password = request.POST.get('password')  
+        username = request.POST.get('username')
+        password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             return redirect("home")
         else:
-            messages.error(request, "Invalid UserName or Password")
+            messages.error(request, "Invalid Username or Password")
             return redirect('signin')
-
     return render(request, 'login.html')
 
 def Signout(request):
-    print(request.user)
-    print(request.user.username)
-    breakpoint()
-
     logout(request)
     return redirect('home')
 
 def home(request):
     items = Products.objects.all()
     return render(request, 'home.html', {'items': items})
-
-
 
 @login_required(login_url='signin')
 def item(request):
@@ -184,20 +124,17 @@ def item(request):
             return redirect('home')
     else:
         form = AddProduct()
-
     context = {'form': form}
     return render(request, 'item_cart.html', context)
 
 @login_required(login_url='signin')
 def cart(request, pk):
     cart_item = get_object_or_404(Products, id=pk)
-    
     user = request.user
     quantity = int(request.POST.get('quantity', 1))
     price = cart_item.price
     total = price * quantity  # Calculate total price based on quantity
 
-    # Try to get the cart item for the user and product
     try:
         cart_product = Cart.objects.get(product=cart_item, user=user)
         cart_product.quantity += quantity
@@ -208,24 +145,21 @@ def cart(request, pk):
 
     return redirect('home')
 
-
-def delete(request,pk):
-    cart=Cart.objects.get(id=pk)
+def delete(request, pk):
+    cart = Cart.objects.get(id=pk)
     cart.delete()
     return redirect('cart-view')
 
 @login_required(login_url='signin')
 def cart_view(request):
     cart_items = Cart.objects.filter(user=request.user)
-    cart_total=0
+    cart_total = 0
     for i in cart_items:
-        cart_total +=i.total
+        cart_total += i.total
     context = {'cart_items': cart_items, 'cart_total': cart_total}
     return render(request, 'cart.html', context)
 
-
-client = razorpay.Client(auth=("rzp_test_sYDXizFjDxb4Vw", "mWbFEV0lUB2Mzp71x57wZSw2"))
-
+client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
 @csrf_exempt
 def create_order(request):
@@ -252,7 +186,6 @@ def create_order(request):
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
-
 @csrf_exempt
 def verify_payment(request):
     if request.method == 'POST':
@@ -262,20 +195,16 @@ def verify_payment(request):
             razorpay_order_id = data['razorpay_order_id']
             razorpay_signature = data['razorpay_signature']
 
-            # Assume `cart` is fetched based on some logic, e.g., from session or user
-            
-            cart_items = Cart.objects.filter(user=request.user)  # Replace with your method to get the cart
-
-            totalamt = 0
-            for i in cart_items:
-                totalamt += i.total
-
             # Verify payment signature
             client.utility.verify_payment_signature({
                 'razorpay_order_id': razorpay_order_id,
                 'razorpay_payment_id': razorpay_payment_id,
                 'razorpay_signature': razorpay_signature
             })
+
+            # Assume `cart` is fetched based on some logic, e.g., from session or user
+            cart_items = Cart.objects.filter(user=request.user)  # Replace with your method to get the cart
+            totalamt = sum(i.total for i in cart_items)
 
             # Save order details
             order = Order.objects.create(
@@ -293,22 +222,15 @@ def verify_payment(request):
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
+@require_POST
+def update_quantity(request, item_id):
+    action = request.POST.get('action')
+    cart_item = get_object_or_404(Cart, id=item_id)
 
+    if action == 'increase':
+        cart_item.quantity += 1
+    elif action == 'decrease' and cart_item.quantity > 1:
+        cart_item.quantity -= 1
 
-def generate_pdf(order):
-    # Path to save the PDF
-    pdf_path = f"order_{order.order_id}.pdf"
-
-    # Create a PDF with ReportLab
-    c = canvas.Canvas(pdf_path)
-    c.drawString(100, 750, f"Order ID: {order.order_id}")
-    c.drawString(100, 730, f"Total Amount: {order.total_amount}")
-
-    # Add more order details as needed
-    c.save()
-
-    # In a real-world scenario, you would save this to a media directory and serve it properly
-    # For example:
-    # pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
-
-    return pdf_path
+    cart_item.save()
+    return JsonResponse({'success': True})

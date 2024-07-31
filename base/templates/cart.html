@@ -35,7 +35,6 @@
         }
 
         .cart-total {
-            margin-left:200px;
             text-align: center;
             padding: 10px;
             background-color: #f8f9fa;
@@ -58,8 +57,27 @@
         .btn:hover {
             background-color: #218838;
         }
+
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .quantity-controls button {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+
+        .quantity-controls button:hover {
+            background-color: #218838;
+        }
     </style>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
     <div class="container">
@@ -71,15 +89,19 @@
             <div>Remove</div>
         </div>
         {% for item in cart_items %}
-        <div class="cart-item">
+        <div class="cart-item" data-item-id="{{ item.id }}">
             <div>{{ item.product.item }}</div>
             <div>₹{{ item.product.price }}</div>
-            <div>{{ item.quantity }}</div>
+            <div class="quantity-controls">
+                <button class="btn-quantity-decrease">-</button>
+                <span>{{ item.quantity }}</span>
+                <button class="btn-quantity-increase">+</button>
+            </div>
             <div><button class="btn"><a href="{% url 'delete' item.id %}" style="color: inherit; text-decoration: none;">Remove</a></button></div>
         </div>
         {% endfor %}
         <div class="cart-total">
-            Total:{{cart_total}}
+            Total: ₹{{ cart_total }}
         </div>
         <button id="checkout-button" class="btn">Proceed to Checkout</button>
     </div>

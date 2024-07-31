@@ -4,7 +4,6 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     
     <title>Product Page</title>
     
@@ -110,20 +109,6 @@
             font-weight: bold;
         }
 
-        .btn-success {
-            background-color: #28a745;
-            border: none;
-            color: #fff;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-success:hover {
-            background-color: #218838;
-        }
         .btn-primary {
             background-color: #20bba6;
             border: none;
@@ -138,7 +123,6 @@
         .btn-primary:hover {
             background-color: #2217be;
         }
-    
 
         .footer {
             background-color: #343a40;
@@ -174,25 +158,6 @@
             }
         }
     </style>
-
-    <script>
-        function handlePaymentSuccess(orderId) {
-            const successMessage = document.getElementById('success-message');
-            successMessage.style.display = 'block';
-            document.getElementById('ok-button').onclick = function() {
-                window.location.href = `/download-receipt/?order_id=${orderId}`;
-            };
-        }
-
-        function simulatePaymentSuccess() {
-            const exampleOrderId = 'order_ABCDEFGHIJKL'; // Replace with actual order ID from payment gateway
-            handlePaymentSuccess(exampleOrderId);
-        }
-
-        window.onload = function() {
-            simulatePaymentSuccess();
-        };
-    </script>
 </head>
 <body>
 
@@ -200,8 +165,7 @@
     <div class="btn">
         <button class="btn btn-success"><a href="{% url 'item' %}" style="color: inherit; text-decoration: none;">Create Item</a></button>
         <button class="btn btn-success"><a href="{% url 'cart-view' %}" style="color: inherit; text-decoration: none;">Cart</a></button>
-    
-   </div>
+    </div>
     <div class="cards">
         {% for item in items %}
         <div class="inner-card">
@@ -211,15 +175,16 @@
             <div class="detail-box">
                 <h6>{{ item.item }}</h6>
                 <h6>Price <span>₹{{ item.price }}</span></h6>
-                {% if request.user.is_authenticated %}
-                <button class="btn btn-success" onclick="initiatePayment({{ item.price }} * 100)">BUY</button>
-                {% else %}
-                <button class="btn btn-success"><a href="{% url 'signin' %}" style="color: inherit; text-decoration: none;">BUY</a></button>
-                {% endif %}
                 <form action="{% url 'cart' item.id %}" method="POST">
                     {% csrf_token %}
                     <input type="number" name="quantity" value="1" min="1" style="width: 50px;">
-                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                    <button type="submit" class="btn btn-primary">
+                        {% if request.user.is_authenticated %}
+                        Add to Cart
+                        {% else %}
+                        <a href="{% url 'signin' %}" style="color: inherit; text-decoration: none;">Add to Cart</a>
+                        {% endif %}
+                    </button>
                 </form>
             </div>
         </div>
@@ -230,43 +195,5 @@
         <p>&copy; 2024 MyStore. All rights reserved.</p>
     </footer>
 
-    <script>
-        function initiatePayment(amount) {
-            var options = {
-                "key": "rzp_test_sYDXizFjDxb4Vw",
-                "amount": amount,
-                "currency": "INR",
-                "name": "MyStore",
-                "description": "Purchase Description",
-                "handler": function (response) {
-                    console.log("Payment response:", response);
-                    alert("Payment Successful");
-
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/verify-payment/", true);
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.send("razorpay_payment_id=" + response.razorpay_payment_id + 
-                             "&razorpay_order_id=" + response.razorpay_order_id + 
-                             "&razorpay_signature=" + response.razorpay_signature);
-                },
-                "prefill": {
-                    "name": "Customer Name",
-                    "email": "customer@example.com",
-                    "contact": "1234567890"
-                },
-                "theme": {
-                    "color": "#F37254"
-                }
-            };
-
-            try {
-                var paymentObject = new Razorpay(options);
-                paymentObject.open();
-            } catch (error) {
-                console.error("Error initiating Razorpay payment:", error);
-                alert("An error occurred while initiating the payment.");
-            }
-        }
-    </script>
 </body>
 </html>
