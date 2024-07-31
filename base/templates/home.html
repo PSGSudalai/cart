@@ -5,14 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <title>Product Page</title>
-    
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -100,7 +97,7 @@
         }
 
         .detail-box {
-            padding: 0px;
+            padding: 10px;
             text-align: center;
         }
 
@@ -138,9 +135,7 @@
             width: 100%;
             margin-top: auto;
         }
-        
 
-    
         @media (max-width: 868px) {
             .hero-section h1 {
                 font-size: 32px;
@@ -165,13 +160,44 @@
                 width: 90%;
             }
         }
+
+        /* Loader styles */
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            display: none; /* Hide loader by default */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none; /* Hide overlay by default */
+        }
     </style>
 </head>
 <body>
 
     {% include "nav.html" %}
   
-    
     {% if messages %}
         <div class="container mt-3">
             {% for message in messages %}
@@ -182,13 +208,11 @@
             {% endfor %}
         </div>
     {% endif %}
-    <div class="btn">
-        <button class="btn btn-success"><a href="{% url 'item' %}" style="color: inherit; text-decoration: none;">Create Item</a></button>
-        <button class="btn btn-success"><a href="{% url 'cart-view' %}" style="color: inherit; text-decoration: none;">Cart</a></button>
-    
+    <div class="btn my-3">
+        <a href="{% url 'item' %}" class="btn btn-success" onclick="showLoader()">Create Item</a>
+        <a href="{% url 'cart-view' %}" class="btn btn-warning" onclick="showLoader()">Cart</a>
     </div>
     <div class="cards">
-        
         {% for item in items %}
         <div class="inner-card">
             <div class="img-box">
@@ -199,23 +223,30 @@
                 <h6>Price <span>₹{{ item.price }}</span></h6>
                 <form action="{% url 'cart' item.id %}" method="POST">
                     {% csrf_token %}
-                  
-                    <button type="submit" class="btn btn-primary">
-                        {% if request.user.is_authenticated %}
-                        Add to Cart
-                        {% else %}
-                        <a href="{% url 'signin' %}" style="color: inherit; text-decoration: none;">Add to Cart</a>
-                        {% endif %}
-                    </button>
+                    {% if request.user.is_authenticated %}
+                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                    {% else %}
+                    <a href="{% url 'signin' %}" class="btn btn-primary">Add to Cart</a>
+                    {% endif %}
                 </form>
             </div>
         </div>
         {% endfor %}
     </div>
-
     <footer class="footer">
         <p>&copy; 2024 MyStore. All rights reserved.</p>
     </footer>
 
+    <!-- Loader HTML -->
+    <div class="overlay" id="overlay"></div>
+    <div class="loader" id="loader"></div>
+
+    <!-- JavaScript for Loader -->
+    <script>
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+    </script>
 </body>
 </html>
