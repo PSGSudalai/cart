@@ -210,7 +210,7 @@
     {% endif %}
     <div class="btn my-3">
         <a href="{% url 'item' %}" class="btn btn-success" onclick="showLoader()">Create Item</a>
-        <a href="{% url 'cart-view' %}" class="btn btn-warning" onclick="showLoader()">Cart</a>
+        <a href="{% url 'cart-view' %}" class="btn btn-warning" onclick="showLoader()">Cart<span class="badge badge-light">{{count}}</span></a>
     </div>
     <div class="cards">
         {% for item in items %}

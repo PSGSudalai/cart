@@ -16,6 +16,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from .models import Cart, Products, Order
 from .form import AddProduct
+from weasyprint import HTML
+from datetime import datetime
+# import pdfkit
 
 
 def get_razorpay_client():
@@ -26,37 +29,36 @@ def generate_pdf(order):
     pdf_path = f"order_{order.order_id}.pdf"
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)  # Save to media directory
 
-    # Company details
-    company_name = "Flipkart"
-    gst_number = "1234327tfc3"
-    pan_number = "PSGW8545G"
+    # HTML content
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            .header {{ font-weight: bold; font-size: 14pt; }}
+            .details {{ font-size: 12pt; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">Your Company Name</div>
+        <div class="details">
+            <p>GST Number: Your GST Number</p>
+            <p>PAN Number: Your PAN Number</p>
+            <p>Order ID: {order.order_id}</p>
+            <p>Total Amount: ₹{order.total_amount}</p>
+            <p>Date: {datetime.now().strftime('%Y-%m-%d')}</p>
+        </div>
+    </body>
+    </html>
+    """
+    # # Generate PDF
+    # pdfkit.from_string(html_content, full_pdf_path)
 
-    # Create a PDF with ReportLab
-    c = canvas.Canvas(full_pdf_path, pagesize=letter)
-    width, height = letter
-
-    # Header
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(1 * inch, height - 1 * inch, company_name)
-    c.setFont("Helvetica", 12)
-    c.drawString(1 * inch, height - 1.25 * inch, f"GST Number: {gst_number}")
-    c.drawString(1 * inch, height - 1.5 * inch, f"PAN Number: {pan_number}")
-
-    # Invoice details
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 2 * inch, f"Order ID: {order.order_id}")
-    c.drawString(1 * inch, height - 2.25 * inch, f"Total Amount: ₹{order.total_amount}")
-
-    # Date
-    from datetime import datetime
-    c.setFont("Helvetica", 12)
-    c.drawString(1 * inch, height - 2.5 * inch, f"Date: {datetime.now().strftime('%Y-%m-%d')}")
-
-    # Add more details if needed
-
-    c.save()
+    # Generate PDF
+    HTML(string=html_content).write_pdf(full_pdf_path)
 
     return pdf_path
+
 
 def download_receipt(request):
     order_id = request.GET.get('order_id')
@@ -114,7 +116,9 @@ def Signout(request):
 
 def home(request):
     items = Products.objects.all()
-    return render(request, 'home.html', {'items': items})
+    cart_count = Cart.objects.filter(user=request.user).count()
+    return render(request, 'home.html', {'items': items, 'count': cart_count})
+
 
 @login_required(login_url='signin')
 def item(request):
