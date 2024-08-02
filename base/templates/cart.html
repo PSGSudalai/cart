@@ -37,6 +37,7 @@
         .cart-total {
             text-align: center;
             padding: 10px;
+            margin-left:500px;
             background-color: #f8f9fa;
             font-size: 1.2em;
         }
@@ -162,6 +163,7 @@
     </div>
         <button id="checkout-button" class="btn">Proceed to Checkout</button>
         <button class="btn-secondary"><a href="{% url 'home' %}" style="color: inherit; text-decoration: none;" onclick="showLoader()">Back</a></button>
+        <button class="btn-secondary"><a href="/download-receipt?order_id={{ order_id }}" target="_blank" style="color: inherit; text-decoration: none;" onclick="showLoader()">Download receipt</a></button>
     </div>
     
        <!-- Loader HTML -->

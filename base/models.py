@@ -14,12 +14,40 @@ class Cart(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
     total = models.DecimalField(max_digits=10, decimal_places=2)
-
+class updateCart(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField()
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    created=models.DateTimeField(auto_now_add=True)
 
 class Order(models.Model):
     order_id = models.CharField(max_length=100, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    # Add other fields as needed
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    items = models.ManyToManyField(Cart)
 
     def __str__(self):
         return self.order_id
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

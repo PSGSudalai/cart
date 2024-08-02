@@ -11,9 +11,9 @@
     <title>Product Page</title>
 
     <style>
-        body {
+       body {
             font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #4c83ff, #72e2ff);
             margin: 0;
             padding: 0;
             display: flex;
@@ -59,6 +59,16 @@
         .hero-section h1 {
             font-size: 48px;
             margin: 0;
+        }
+        .badge-light {
+        background-color: red;
+        border-radius: 10px;
+        text-align: end;
+        margin-top: auto;
+        padding: 0.25em 0.4em;
+        color: white; 
+        font-size: 0.75em; 
+        display: inline-block; 
         }
 
         .hero-section p {
@@ -224,7 +234,7 @@
                 <form action="{% url 'cart' item.id %}" method="POST">
                     {% csrf_token %}
                     {% if request.user.is_authenticated %}
-                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                    <button type="submit" class="btn btn-primary" onclick="showLoader()">Add to Cart</button>
                     {% else %}
                     <a href="{% url 'signin' %}" class="btn btn-primary">Add to Cart</a>
                     {% endif %}

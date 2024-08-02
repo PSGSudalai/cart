@@ -17,8 +17,7 @@ urlpatterns = [
     path('update_quantity/<int:pk>/', views.update_quantity, name='update_quantity'),
     path('download-receipt/', views.download_receipt, name='download_receipt'),
     path('back/', views.back, name='back'),
-    
-
+    path('profile/', views.profile, name='profile'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
