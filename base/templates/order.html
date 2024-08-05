@@ -1,29 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <div class="container">
-        <div class="row">
-            <h4>{{request.user.username}}</h4>
+    <title>Order Summary</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #8ce9fa 0%, #8ce9fa 100%);
+            font-family: Arial, sans-serif;
+        }
+        .container{
+            margin-top:1000px;
+        }
+        tbody{
 
-            <div class="cards">
-                <div class="inner-card1">
-                    <h6>Product</h6>
-                    <p>{{cart}}</p>
+            background-color: white;;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 999;
+        }
+
+        .loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 1000;
+        }
+
+        .loader::before {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 40px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-1">
+        <div class="row">
+            <div class="col-12 mb-4 text-center">
+                <h4>{{ request.user.username }}</h4>
+            </div>
+            <div class="col-12 mb-4">
+                <div class="card-deck">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Product</h6>
+                            <p class="card-text">{{ cart }}</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">Total Amount</h6>
+                            <p class="card-text">{{ value }}</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="inner-card1">
-                    <h6>Quantity</h6>
-                </div>
-                <div class="inner-card1">
-                    <h6>TotalAmount</h6>
-                    <p>{{value}}</p>
-                </div>
+            </div>
+            <div class="col-4 mb-4">
+                <form method="get" action="">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <input type="date" name="start_date" class="form-control" placeholder="Start Date" value="{{ start_date }}">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <input type="date" name="end_date" class="form-control" placeholder="End Date" value="{{ end_date }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </form>
+            </div>
+            <div class="col-12">
+                <table class="table table-bordered table-responsive-md">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Product</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in amt %}
+                        <tr>
+                            <td>{{ item.product.item }}</td>
+                            <td>{{ item.product.price }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.total }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-12 text-center mt-3">
+                <button class="btn btn-secondary">
+                    <a href="{% url 'home' %}" style="color: inherit; text-decoration: none;" onclick="showLoader()">Back</a>
+                </button>
+                <button class="btn btn-success">
+                    <a href="{% url 'home' %}" style="color: inherit; text-decoration: none;" onclick="showLoader()">Report</a>
+                </button>
             </div>
         </div>
     </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="loader" id="loader"></div>
+
+    <!-- JavaScript for Loader -->
+    <script>
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
+
 </html>

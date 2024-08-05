@@ -15,10 +15,12 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from requests import request
-from .models import Cart, Products, Order, updateCart
+from .models import Cart, Products, Order
 from .form import AddProduct
 from weasyprint import HTML
 from datetime import datetime
+from django.utils.dateparse import parse_date
+
 # import pdfkit
 
 
@@ -73,7 +75,7 @@ def home(request):
     items = Products.objects.all()
     cart_count = 0
     if request.user.is_authenticated:
-        cart_count = Cart.objects.filter(user=request.user).count()
+        cart_count = Cart.objects.filter(user=request.user,is_sold=False).count()
 
     return render(request, 'home.html', {'items': items, 'count': cart_count})
 
@@ -101,7 +103,7 @@ def cart(request, pk):
     total = price * quantity  # Calculate total price based on quantity
 
     try:
-        cart_product = Cart.objects.get(product=cart_item, user=user)
+        cart_product = Cart.objects.get(product=cart_item, user=user , is_sold=False)
         cart_product.quantity += quantity
         cart_product.total = cart_product.price * cart_product.quantity
         cart_product.save()
@@ -121,7 +123,7 @@ def back(request):
 
 @login_required(login_url='signin')
 def cart_view(request):
-    cart_items = Cart.objects.filter(user=request.user)
+    cart_items = Cart.objects.filter(user=request.user,is_sold=False)
     cart_total = 0
     for i in cart_items:
         cart_total += i.total
@@ -154,42 +156,64 @@ def create_order(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
-
-@csrf_exempt  
+@csrf_exempt
 def verify_payment(request):
     if request.method == 'POST':
         try:
+            # Load data from request body
             data = json.loads(request.body)
-            razorpay_payment_id = data['razorpay_payment_id']
-            razorpay_order_id = data['razorpay_order_id']
-            razorpay_signature = data['razorpay_signature']
+            razorpay_payment_id = data.get('razorpay_payment_id')
+            razorpay_order_id = data.get('razorpay_order_id')
+            razorpay_signature = data.get('razorpay_signature')
+
+            # Check for missing payment details
+            if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
+                return JsonResponse({'error': 'Missing payment details'}, status=400)
+
+            # Initialize Razorpay client
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
             # Verify payment signature
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
-            client.utility.verify_payment_signature({
-                'razorpay_order_id': razorpay_order_id,
-                'razorpay_payment_id': razorpay_payment_id,
-                'razorpay_signature': razorpay_signature
-            })
+            try:
+                client.utility.verify_payment_signature({
+                    'razorpay_order_id': razorpay_order_id,
+                    'razorpay_payment_id': razorpay_payment_id,
+                    'razorpay_signature': razorpay_signature
+                })
+            except razorpay.errors.SignatureVerificationError:
+                return JsonResponse({'error': 'Payment signature verification failed'}, status=400)
 
             # Fetch cart items
-            cart_items = Cart.objects.filter(user=request.user)
+            cart_items = Cart.objects.filter(user=request.user, is_sold=False)
+            if not cart_items.exists():
+                return JsonResponse({'error': 'No items in cart'}, status=400)
+
+            # Calculate total amount
             totalamt = sum(item.total for item in cart_items)
 
             # Save order details
             order = Order.objects.create(
                 order_id=razorpay_order_id,
-                total_amount=totalamt
+                total_amount=totalamt,
+                user=request.user  # Assuming your Order model has a user field
             )
-
+            
+            # Mark cart items as sold
+            cart_items.update(is_sold=True)
+            
             # Generate PDF receipt
             pdf_path = generate_pdf(request, order, cart_items)
+
             
-            cart_items.delete()
 
             return JsonResponse({'status': 'success', 'pdf_url': pdf_path, 'order_id': order.order_id})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except KeyError as e:
+            return JsonResponse({'error': f'Missing key: {str(e)}'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
@@ -197,13 +221,13 @@ def get_razorpay_client():
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
 
-def generate_pdf(request, order, pk):
+def generate_pdf(request, order, cart_items):
     # Path to save the PDF
     pdf_path = f"order_{order.order_id}.pdf"
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)  # Save to media directory
 
     # Fetch the cart items for the given user and pk
-    cart_items = Cart.objects.filter(user=request.user, id=pk)
+    
 
     # HTML content
     html_content = f"""
@@ -238,7 +262,7 @@ def generate_pdf(request, order, pk):
     for item in cart_items:
         html_content += f"""
                 <tr>
-                    <td>{item.item_name}</td>
+                    <td>{item.product.item}</td>
                     <td>₹{item.price}</td>
                     <td>{item.quantity}</td>
                     <td>₹{item.price * item.quantity}</td>
@@ -288,11 +312,33 @@ def update_quantity(request, pk):
 
 
 def profile(request):
-    cart=Cart.objects.filter(user=request.user).count()
-    amt=Cart.objects.filter(user=request.user)
-    value=0
-    for i in amt:
-        value += i.total
+    today = datetime.now().date()
+    
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
 
-    context={'cart':cart,'amt':amt,'value':value}        
-    return render(request,'order.html',context)
+    if start_date:
+        start_date = parse_date(start_date)
+    if end_date:
+        end_date = parse_date(end_date)
+
+    cart_count = Cart.objects.filter(user=request.user, is_sold=True).count()
+    amt = Cart.objects.filter(user=request.user, is_sold=True)
+    
+    if start_date and end_date:
+        amt = amt.filter(created__date__range=[start_date, end_date])
+    elif start_date:
+        amt = amt.filter(created__date__gte=start_date)
+    elif end_date:
+        amt = amt.filter(created__date__lte=end_date)
+    
+    value = sum(item.total for item in amt)
+    
+    context = {
+        'cart': cart_count,
+        'amt': amt,
+        'value': value,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+    return render(request, 'order.html', context)

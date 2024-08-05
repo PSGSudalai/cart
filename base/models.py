@@ -6,7 +6,7 @@ class Products(models.Model):
     item = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='products/')
-    # Add other fields as necessary
+    created=models.DateTimeField(auto_now_add=True)
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -14,12 +14,7 @@ class Cart(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
     total = models.DecimalField(max_digits=10, decimal_places=2)
-class updateCart(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Products, on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField()
-    total = models.DecimalField(max_digits=10, decimal_places=2)
+    is_sold=models.BooleanField(default=False)
     created=models.DateTimeField(auto_now_add=True)
 
 class Order(models.Model):
@@ -27,7 +22,7 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     items = models.ManyToManyField(Cart)
-
+    created=models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.order_id
 

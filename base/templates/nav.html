@@ -79,7 +79,7 @@
     
 <div>
     
-        <h4><i class="fa fa-user" aria-hidden="true" ></i> {{ request.user.username }}</h4>
+        <h4><i class="fa fa-user" aria-hidden="true" ></i><a href="{% url 'profile' %}" style="color: inherit; text-decoration: none;">{{ request.user.username }}</a> </h4>
 
 </div>
 <div class="navbar-center">
