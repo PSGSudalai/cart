@@ -16,8 +16,12 @@ urlpatterns = [
     path('verify/', views.verify_payment, name='verify'),
     path('update_quantity/<int:pk>/', views.update_quantity, name='update_quantity'),
     path('download-receipt/', views.download_receipt, name='download_receipt'),
+    path('receipt/<str:from_date>/', views.receipt, name='receipt'),
+    path('download/<int:pk>/', views.download, name='download'),
     path('back/', views.back, name='back'),
     path('profile/', views.profile, name='profile'),
+    path('report/', views.generate_report, name='report'),
+   
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

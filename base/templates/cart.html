@@ -173,7 +173,6 @@
     </div>
         <button id="checkout-button" class="btn">Proceed to Checkout</button>
         <button class="btn-secondary"><a href="{% url 'home' %}" style="color: inherit; text-decoration: none;" onclick="showLoader()">Back</a></button>
-        <button class="btn-secondary"><a href="/download-receipt?order_id={{ order_id }}" target="_blank" style="color: inherit; text-decoration: none;" onclick="showLoader()">Download receipt</a></button>
     </div>
     
        <!-- Loader HTML --> 
@@ -217,6 +216,7 @@
                             xhr.onload = function () {
                                 if (xhr.status === 200) {
                                     // Redirect to download receipt
+                                    console.log("ok")
                                     window.location.href = "/download-receipt/?order_id=" + response.razorpay_order_id;
                                 } else {
                                     alert("Payment verification failed");

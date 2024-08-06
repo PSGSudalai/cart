@@ -18,8 +18,14 @@ from requests import request
 from .models import Cart, Products, Order
 from .form import AddProduct
 from weasyprint import HTML
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils.dateparse import parse_date
+from django.utils.timezone import make_aware
+import openpyxl
+from base.models import Cart
+from django.core.mail import EmailMessage
+from io import BytesIO
+
 
 # import pdfkit
 
@@ -156,6 +162,7 @@ def create_order(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
 @csrf_exempt
 def verify_payment(request):
     if request.method == 'POST':
@@ -184,7 +191,9 @@ def verify_payment(request):
                 return JsonResponse({'error': 'Payment signature verification failed'}, status=400)
 
             # Fetch cart items
+            items = Cart.objects.filter(user=request.user, is_sold=False)
             cart_items = Cart.objects.filter(user=request.user, is_sold=False)
+
             if not cart_items.exists():
                 return JsonResponse({'error': 'No items in cart'}, status=400)
 
@@ -199,10 +208,10 @@ def verify_payment(request):
             )
             
             # Mark cart items as sold
-            cart_items.update(is_sold=True)
-            
+            items.update(is_sold=True)
             # Generate PDF receipt
             pdf_path = generate_pdf(request, order, cart_items)
+            # download_receipt(request, order, items)
 
             
 
@@ -236,6 +245,7 @@ def generate_pdf(request, order, cart_items):
         <style>
             body {{ font-family: Arial, sans-serif; }}
             .header {{ font-weight: bold; font-size: 14pt; text-align: center; }}
+            .date {{ font-size:12pt; margin-left:400px;}}
             .details {{ font-size: 12pt; }}
             .bio {{ font-size: 12pt; margin-right: 100px; }}
             table {{ width: 100%; border-collapse: collapse; }}
@@ -245,6 +255,7 @@ def generate_pdf(request, order, cart_items):
     </head>
     <body>
         <div class="header">Shopping Market</div>
+        <div class="date"> <p>Date: {datetime.now().strftime('%d-%m-%Y')}</p></div>
         <div class="details">
             <p>Name: {request.user.username}</p>
             <p>Address: xyz, Chennai</p>
@@ -273,11 +284,10 @@ def generate_pdf(request, order, cart_items):
             </table>
         </div>
         <div class="bio">
-            <p>GST Number: Your GST Number</p>
-            <p>PAN Number: Your PAN Number</p>
+            <p>GST Number: 12d567hh</p>
+            <p>PAN Number: PSDF7657H</p>
             <p>Order ID: {order.order_id}</p>
             <p>Total Amount: ₹{order.total_amount}</p>
-            <p>Date: {datetime.now().strftime('%Y-%m-%d')}</p>
         </div>
     </body>
     </html>
@@ -287,12 +297,24 @@ def generate_pdf(request, order, cart_items):
     HTML(string=html_content).write_pdf(full_pdf_path)
 
     return full_pdf_path
+
+# def download_receipt(request, order, items):
+#     pdf_path = generate_pdf(request, order, items)
+#     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+    
+#     # Ensure the file exists
+#     if os.path.exists(full_pdf_path):
+#         return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order.order_id}.pdf")
+#     else:
+#         return JsonResponse({'error': 'File not found'}, status=404)
+
+
+
 def download_receipt(request):
     order_id = request.GET.get('order_id')
     order = get_object_or_404(Order, order_id=order_id)
-    cart_items = Cart.objects.filter(user=request.user)
+    cart_items = Cart.objects.filter(user=request.user,is_sold=False)
     pdf_path = generate_pdf(request, order, cart_items)
-
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
     return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order_id}.pdf")
 
@@ -342,3 +364,209 @@ def profile(request):
         'end_date': end_date
     }
     return render(request, 'order.html', context)
+
+
+
+def generate_report(request):
+    report_detail = Cart.objects.filter(
+        is_sold=True, 
+        
+    )
+
+    # Aggregate data by product
+    product_data = {}
+    for item in report_detail:
+        product_name = item.product.item  # Assuming there's a field 'product_name'
+        if product_name not in product_data:
+            product_data[product_name] = {'quantity': 0, 'total': 0}
+        product_data[product_name]['quantity'] += 1  # Increment quantity
+        product_data[product_name]['total'] += item.price  # Assuming 'price' is the total price of the item
+
+    # Create Excel workbook
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Sales Report"
+
+    # Set header
+    sheet['A1'] = 'Product'
+    sheet['B1'] = 'Quantity'
+    sheet['C1'] = 'Total Price'
+
+    # Populate the sheet with data
+    row = 2
+    for product_name, data in product_data.items():
+        sheet[f'A{row}'] = product_name
+        sheet[f'B{row}'] = data['quantity']
+        sheet[f'C{row}'] = data['total']
+        row += 1
+
+
+    file_stream = BytesIO()
+    workbook.save(file_stream)
+    file_stream.seek(0)
+    
+    response = HttpResponse(file_stream, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="sales_report.xlsx"'
+    
+    return response
+
+def pdf(cart_items, username):
+    # Unique filename based on timestamp or other unique value
+    pdf_filename = f"receipt_{datetime.now().strftime('%d%m%Y%H%M%S')}.pdf"
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
+
+    # HTML content for the PDF
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            .header {{ font-weight: bold; font-size: 14pt; text-align: center; }}
+            .date {{ font-size:12pt; text-align: right; }}
+            .details {{ font-size: 12pt; margin-top: 20px; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+            th, td {{ border: 1px solid black; padding: 8px; text-align: left; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">Shopping Market</div>
+        <div class="date">Date: {datetime.now().strftime('%Y-%m-%d')}</div>
+        <div class="details">
+            <p>Name: {username}</p>
+            <p>Address: xyz, Chennai</p>
+        </div>
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+            </tr>"""
+    
+    # Add cart items to the HTML content
+    for item in cart_items:
+        html_content += f"""
+            <tr>
+                <td>{item.product.item}</td>
+                <td>₹{item.price}</td>
+                <td>{item.quantity}</td>
+                <td>₹{item.price * item.quantity}</td>
+            </tr>"""
+
+    # Close the table and add additional details
+    html_content += f"""
+        </table>
+        <div class="bio">
+            <p>GST Number: 12d567hh</p>
+            <p>PAN Number: PSDF7657H</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    HTML(string=html_content).write_pdf(full_pdf_path)
+
+    return pdf_filename
+
+def download(request, pk):
+    try:
+        cart_item = Cart.objects.get(user=request.user, is_sold=True, id=pk)
+    except Cart.DoesNotExist:
+        raise Http404("Item not found.")
+
+    # Generate PDF and get the file path
+    pdf_filename = pdf([cart_item], request.user.username)
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
+
+    # Return the PDF file as a response
+    return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=pdf_filename)
+    
+
+
+def generate(request, cart_items):
+    # Path to save the PDF
+    pdf_path = f"order_date.pdf"
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+
+    # HTML content
+    html_content = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; }}
+            .header {{ font-weight: bold; font-size: 14pt; text-align: center; }}
+            .date {{ font-size:12pt; margin-left:400px;}}
+            .details {{ font-size: 12pt; }}
+            .bio {{ font-size: 12pt; margin-right: 100px; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th, td {{ border: 1px solid black; padding: 8px; text-align: left; }}
+            .table {{ margin-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">Shopping Market</div>
+        <div class="date"> <p>Date: {datetime.now().strftime('%Y-%m-%d')}</p></div>
+        <div class="details">
+            <p>Name: {request.user.username}</p>
+            <p>Address: xyz, Chennai</p>
+        </div>
+        <div class="table">
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                </tr>"""
+
+    # Add cart items to the HTML content
+    for item in cart_items:
+        html_content += f"""
+                <tr>
+                    <td>{item.product.item}</td>
+                    <td>₹{item.price}</td>
+                    <td>{item.quantity}</td>
+                    <td>₹{item.price * item.quantity}</td>
+                </tr>"""
+
+    # Close the table and add the order summary
+    html_content += f"""
+            </table>
+        </div>
+        <div class="bio">
+            <p>GST Number: 12d567hh</p>
+            <p>PAN Number: PSDF7657H</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    HTML(string=html_content).write_pdf(full_pdf_path)
+
+    return full_pdf_path
+
+
+
+def receipt(request, from_date):
+    # Convert from_date string to a datetime object
+    from_date = datetime.strptime(from_date, '%Y-%m-%d')
+    from_date = from_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Set end_date to the end of the same day
+    end_date = from_date + timedelta(days=1) - timedelta(microseconds=1)
+
+    # Filter cart items by the specified date range
+    cart_items = Cart.objects.filter(
+        user=request.user,
+        is_sold=True,
+        created__range=(from_date, end_date)
+    )
+
+    # Generate the PDF
+    pdf_path = generate(request, cart_items)  # Adjust if `order` is needed
+
+    # Serve the generated PDF as a response
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+    return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{from_date.strftime('%Y-%m-%d')}.pdf")

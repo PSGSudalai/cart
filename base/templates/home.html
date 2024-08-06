@@ -136,6 +136,9 @@
         .btn-primary:hover {
             background-color: #2217be;
         }
+        .btn-success{
+            margin-left:800px;
+        }
 
         .footer {
             background-color: #343a40;
@@ -144,6 +147,11 @@
             padding: 10px 0;
             width: 100%;
             margin-top: auto;
+        }
+        .custom-alert {
+            width: 300px;
+            margin-left: 1000px;
+            font-weight: bold;
         }
 
         @media (max-width: 868px) {
@@ -212,6 +220,19 @@
             display: none; /* Hide overlay by default */
         }
     </style>
+    <script>
+        // Automatically hide alerts after 5 seconds
+        setTimeout(function() {
+            let alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                alert.classList.remove('show');
+                alert.classList.add('fade');
+                setTimeout(function() {
+                    alert.style.display = 'none';
+                }, 150); // Small delay for the fade-out effect
+            });
+        }, 3000); // 5000 milliseconds = 5 seconds
+    </script>
 </head>
 <body>
 
@@ -220,11 +241,12 @@
     {% if messages %}
         <div class="container mt-3">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show custom-alert" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+        
         </div>
     {% endif %}
     <div class="btn my-3">

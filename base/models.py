@@ -17,6 +17,7 @@ class Cart(models.Model):
     is_sold=models.BooleanField(default=False)
     created=models.DateTimeField(auto_now_add=True)
 
+
 class Order(models.Model):
     order_id = models.CharField(max_length=100, unique=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
