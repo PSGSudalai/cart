@@ -357,7 +357,7 @@ def profile(request):
     cart_count = Cart.objects.filter(user=request.user, is_sold=True).count()
     amt = Cart.objects.filter(user=request.user, is_sold=True)
     orders=Order.objects.filter(user=request.user)
-    item=Order.objects.all()
+    # item=Order.objects.all()
     for order in orders:
         order.order_id
         order.created

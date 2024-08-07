@@ -182,6 +182,7 @@
                             <tr>
                                 <th>S.No</th>
                                 <th>Date</th>
+                                <th>Items</th>
                                 <th>OrderID</th>
                                 <th>TotalAmount</th>
                                 <th>Download</th>
@@ -192,6 +193,13 @@
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ item.created|date:"Y-m-d H:i:s" }}</td>
+                                    <td>
+                                        <ul>
+                                        {% for product in item.items.all %}
+                                        <li>{{ product.item}}</li>
+                                        {% endfor%}
+                                        </ul>
+                                    </td>
                                     <td>{{ item.order_id }}</td>
                                     <td>{{ item.total_amount }}</td>
                                     <td>
