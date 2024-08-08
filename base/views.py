@@ -27,6 +27,9 @@ from django.core.mail import EmailMessage
 from io import BytesIO
 from django.utils.timezone import now 
 import logging
+from django.http import Http404, HttpResponse
+# other imports
+
 
 
 # import pdfkit
@@ -214,7 +217,7 @@ def verify_payment(request):
             # Mark cart items as sold
             items.update(is_sold=True)
             # Generate PDF receipt
-            pdf_path = generate_pdf(request, order, cart_items)
+            pdf_path = generate_pdf(request, order,cart_items)
             # download_receipt(request, order, items)
 
             
@@ -234,7 +237,7 @@ def get_razorpay_client():
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
 
-def generate_pdf(request, order, cart_items):
+def generate_pdf(request, order,cart_items):
     # Path to save the PDF
     pdf_path = f"order_{order.order_id}.pdf"
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)  # Save to media directory
@@ -270,20 +273,33 @@ def generate_pdf(request, order, cart_items):
             <table>
                 <tr>
                     <th>Item</th>
-                    <th>Price</th>
                     <th>Quantity</th>
+                    <th>Price</th>
                     <th>Total</th>
                 </tr>"""
     
     # Add cart items to the HTML content
     for item in cart_items:
-        html_content += f"""
-                <tr>
-                    <td>{item.product.item}</td>
-                    <td>₹{item.price}</td>
-                    <td>{item.quantity}</td>
-                    <td>₹{item.price * item.quantity}</td>
-                </tr>"""
+            html_content += f"""
+                    <tr>
+
+                        <td>{item.product.item}</td>
+                        <td>₹{item.price}</td>
+                        <td>{item.quantity}</td>
+                        <td>₹{item.price * item.quantity}</td>
+                    </tr>"""
+
+
+    # for stock in order:
+    #     html_content +=f"""
+    #     {% for item in stock.items.all %}
+    #     <tr>
+    #           <td>{item.product.item}</td>
+    #           <td>{item.quantity }</td>
+    #           <td>{item.price }</td>
+    #           <td>{item.total }</td>
+    #     </tr>
+    #     {% endfor %}"""
 
     # Close the table and add the order summary
     html_content += f"""
@@ -314,7 +330,6 @@ def generate_pdf(request, order, cart_items):
 #         return JsonResponse({'error': 'File not found'}, status=404)
 
 
-
 def download_receipt(request):
     order_id = request.GET.get('order_id')
     order = get_object_or_404(Order, order_id=order_id)
@@ -322,6 +337,32 @@ def download_receipt(request):
     pdf_path = generate_pdf(request, order, cart_items)
     full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
     return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order_id}.pdf")
+
+
+
+# logger = logging.getLogger(__name__)
+
+# def download_receipt(request, order_id):
+#     try:
+#         order = get_object_or_404(Order, pk=order_id, user=request.user)
+#         cart_items = Cart.objects.filter(order=order, is_sold=True)
+
+#         if not cart_items:
+#             raise Http404("No cart items found for this order.")
+
+#         pdf_filename = pdf(cart_items, order, request.user.username)
+#         if not pdf_filename:
+#             raise Http404("Error generating PDF file.")
+
+#         full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_filename)
+
+#         if not os.path.exists(full_pdf_path):
+#             raise Http404("PDF file not found.")
+
+#         return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=pdf_filename)
+#     except Exception as e:
+#         logger.error(f"Error in download view: {e}")
+#         raise Http404("Error processing download request.")
 
 
 @require_POST
@@ -451,7 +492,7 @@ def pdf(cart_items, order, username):
         </head>
         <body>
             <div class="header">Shopping Market</div>
-            <div class="date">Date: {now().strftime('%Y-%m-%d')}</div>
+            <div class="date">Date: {now().strftime('%d-%m-%Y')}</div>
             <div class="details">
                 <p>Name: {username}</p>
                 <p>Address: xyz, Chennai</p>
@@ -473,8 +514,9 @@ def pdf(cart_items, order, username):
                     <td>₹{item.price * item.quantity}</td>
                 </tr>"""
 
-        html_content += """
+        html_content += f"""
             </table>
+            <div class="total"><p>TotalAmount:₹{ order.total_amount }</p></div>
             <div class="bio">
                 <p>GST Number: 12d567hh</p>
                 <p>PAN Number: PSDF7657H</p>
@@ -534,7 +576,7 @@ def generate(request, cart_items):
     </head>
     <body>
         <div class="header">Shopping Market</div>
-        <div class="date"> <p>Date: {datetime.now().strftime('%Y-%m-%d')}</p></div>
+        <div class="date"> <p>Date: {datetime.now().strftime('%d-%m-%Y')}</p></div>
         <div class="details">
             <p>Name: {request.user.username}</p>
             <p>Address: xyz, Chennai</p>
