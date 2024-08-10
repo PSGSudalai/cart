@@ -28,11 +28,8 @@ from io import BytesIO
 from django.utils.timezone import now 
 import logging
 from django.http import Http404, HttpResponse
-# other imports
-
-
-
-# import pdfkit
+from datetime import datetime
+from django.db.models import Q
 
 
 
@@ -81,14 +78,27 @@ def Signin(request):
 def Signout(request):
     logout(request)
     return redirect('home')
-
 def home(request):
-    items = Products.objects.all()
+    search_query = request.GET.get('search', '')
+    
+    if search_query:
+        # Filtering products based on the search query
+        items = Products.objects.filter(
+            Q(item__icontains=search_query) | 
+            Q(price__icontains=search_query),
+            isdelete=False  # Exclude deleted items
+        ).distinct()
+    else:
+        # If no search query, return all items that are not deleted
+        items = Products.objects.filter(isdelete=False)
+    
     cart_count = 0
     if request.user.is_authenticated:
-        cart_count = Cart.objects.filter(user=request.user,is_sold=False).count()
+        cart_count = Cart.objects.filter(user=request.user, is_sold=False).count()
+    
+    context = {'items': items, 'count': cart_count}
+    return render(request, 'home.html', context)
 
-    return render(request, 'home.html', {'items': items, 'count': cart_count})
 
 
 @login_required(login_url='signin')
@@ -104,8 +114,31 @@ def item(request):
     context = {'form': form}
     return render(request, 'item_cart.html', context)
 
-@login_required(login_url='signin')
 
+
+
+# def item(request, product_id=None):
+#     if product_id:
+#         product = get_object_or_404(Product, id=product_id)
+#     else:
+#         product = None
+    
+#     if request.method == 'POST':
+#         form = AddProduct(request.POST, request.FILES, instance=product)
+#         if form.is_valid():
+#             form.save()
+#             if product:
+#                 messages.success(request, 'Product updated successfully!')
+#             else:
+#                 messages.success(request, 'Product created successfully!')
+#             return redirect('home')
+#     else:
+#         form = AddProduct(instance=product)
+    
+#     context = {'form': form, 'product_id': product_id}
+#     return render(request, 'item_cart.html', context)
+
+@login_required(login_url='signin')
 def cart(request, pk):
     cart_item = get_object_or_404(Products, id=pk)
     user = request.user
@@ -132,6 +165,13 @@ def delete(request, pk):
 def back(request):
     return redirect('home')
 
+def delete_item(request, item_id):
+    if request.user.is_superuser:
+        item = get_object_or_404(Products, id=item_id, isdelete=False)
+        item.isdelete = True  # Mark the item as deleted (soft delete)
+        item.save()  # Save the changes to the database
+    return redirect('home') 
+
 @login_required(login_url='signin')
 def cart_view(request):
     cart_items = Cart.objects.filter(user=request.user,is_sold=False)
@@ -142,6 +182,7 @@ def cart_view(request):
     return render(request, 'cart.html', context)
 
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+
 
 @csrf_exempt
 def create_order(request):
@@ -210,19 +251,19 @@ def verify_payment(request):
                 order_id=razorpay_order_id,
                 total_amount=totalamt,
                 user=request.user,
-                 # Assuming your Order model has a user field
+                # Assuming your Order model has a user field
             )
             order.items.set(cart_items)
             
             # Mark cart items as sold
             items.update(is_sold=True)
+          
             # Generate PDF receipt
             pdf_path = generate_pdf(request, order,cart_items)
             # download_receipt(request, order, items)
 
-            
-
             return JsonResponse({'status': 'success', 'pdf_url': pdf_path, 'order_id': order.order_id})
+
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -331,13 +372,30 @@ def generate_pdf(request, order,cart_items):
 
 
 def download_receipt(request):
+    # Get the order_id from request GET parameters
     order_id = request.GET.get('order_id')
-    order = get_object_or_404(Order, order_id=order_id)
-    cart_items = Cart.objects.filter(user=request.user,is_sold=True)
-    pdf_path = generate_pdf(request, order, cart_items)
-    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
-    return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order_id}.pdf")
 
+    if not order_id:
+        return JsonResponse({'error': 'Order ID not provided'}, status=400)
+
+    # Fetch the order using the provided order_id
+    order = get_object_or_404(Order, order_id=order_id)
+
+    # Fetch the related cart items
+    cart_items = order.items.all()  # Call all() method to get the queryset
+
+    # Generate PDF receipt
+    pdf_path = generate_pdf(request, order, cart_items)
+
+    # Construct the full path to the PDF
+    full_pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+
+    # Check if the file exists
+    if os.path.exists(full_pdf_path):
+        # Return the file as a response
+        return FileResponse(open(full_pdf_path, 'rb'), content_type='application/pdf', as_attachment=True, filename=f"receipt_{order_id}.pdf")
+    else:
+        return JsonResponse({'error': 'File not found'}, status=404)
 
 
 # logger = logging.getLogger(__name__)
@@ -378,7 +436,6 @@ def update_quantity(request, pk):
     cart_item.save()
     return redirect('cart-view')
 
-
 def profile(request):
     today = datetime.now().date()
     
@@ -389,42 +446,33 @@ def profile(request):
         start_date = parse_date(start_date)
     if end_date:
         end_date = parse_date(end_date)
-    # items = Order.objects.all()
-    # for item in items:
-    #     item.items
-    #     for sub_item in item.items.all():
-    #         sub_item.items
 
-    cart_count = Cart.objects.filter(user=request.user, is_sold=True).count()
-    amt = Cart.objects.filter(user=request.user, is_sold=True)
-    orders=Order.objects.filter(user=request.user)
-    # item=Order.objects.all()
-    for order in orders:
-        order.order_id
-        order.created
-    
+    cart_items = Cart.objects.filter(user=request.user, is_sold=True)
+    orders = Order.objects.filter(user=request.user)
+
     if start_date and end_date:
-        amt = amt.filter(created__date__range=[start_date, end_date])
+        cart_items = cart_items.filter(created__date__range=[start_date, end_date])
+        orders = orders.filter(created__date__range=[start_date, end_date])
     elif start_date:
-        amt = amt.filter(created__date__gte=start_date)
+        cart_items = cart_items.filter(created__date__gte=start_date)
+        orders = orders.filter(created__date__gte=start_date)
     elif end_date:
-        amt = amt.filter(created__date__lte=end_date)
-    
-    value = sum(item.total for item in amt)
+        cart_items = cart_items.filter(created__date__lte=end_date)
+        orders = orders.filter(created__date__lte=end_date)
+
+    cart_count = cart_items.count()
+    value = sum(item.total for item in cart_items)
     
     context = {
-        'cart': cart_count,
-        'amt': amt,
+        'cart_count': cart_count,
+        'amt': cart_items,
         'value': value,
         'start_date': start_date,
         'end_date': end_date,
-        'orders':orders,
-        'item':item
-        
+        'orders': orders,
+        'today_date': today,
     }
     return render(request, 'order.html', context)
-
-
 
 def generate_report(request):
     report_detail = Cart.objects.filter(

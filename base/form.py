@@ -6,3 +6,6 @@ class AddProduct(forms.ModelForm):
     class Meta:
         model=Products
         fields=['item','price','image']
+
+
+

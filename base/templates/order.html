@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Summary</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <style>
         body {
             margin: 0;
@@ -133,10 +136,19 @@
 
         .btn-download:hover {
             background-color: #0056b3;
-            }
+        
+        }
         
 
     </style>
+     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var today = new Date().toISOString().split('T')[0];
+            document.getElementById("start_date").setAttribute("max", today);
+            document.getElementById("fromDate").setAttribute("max", today);
+            document.getElementById("end_date").setAttribute("max", today);
+        });
+    </script>
 </head>
 
 <body>
@@ -150,7 +162,7 @@
                     <div class="card">
                         <div class="card-body">
                             <h6 class="card-title">Product</h6>
-                            <p class="card-text">{{ cart }}</p>
+                            <p class="card-text">{{ cart_count }}</p>
                         </div>
                     </div>
                     <div class="card">
@@ -165,18 +177,19 @@
                 <form method="get" action="">
                     <div class="form-row">
                         <div class="form-group col-md-4">
-                            <input type="date" name="start_date" class="form-control" placeholder="Start Date" value="{{ request.GET.start_date }}">
+                            <input type="date" id="start_date" name="start_date" class="form-control" placeholder="Start Date" value="{{ request.GET.start_date }}">
                         </div>
                         <div class="form-group col-md-4">
-                            <input type="date" name="end_date" class="form-control" placeholder="End Date" value="{{ request.GET.end_date }}">
+                            <input type="date" id="end_date" name="end_date" class="form-control" placeholder="End Date" value="{{ request.GET.end_date }}">
                         </div>
                         <div class="form-group col-md-2">
                             <button type="submit" class="btn btn-primary">Filter</button>
                         </div>
                     </div>
                 </form>
+                
             </div>
-
+            {% if orders %}
             <div class="col-12">
                 <div class="table-responsive-md">
                     <table class="table table-bordered">
@@ -213,19 +226,25 @@
                     </table>
                 </div>
             </div>
-
+            {% else %}
+            <h4>
+                Not found
+            </h4>
+            {% endif %}
             <div class="col-12 text-center mt-3">
                 <button class="btn btn-secondary" onclick="showLoader()">
                     <a href="{% url 'home' %}" style="color: inherit; text-decoration: none;">Back</a>
                 </button>
+                {% if request.user.is_superuser %}
                 <button class="btn btn-success" onclick="showLoader()">
                     <a href="{% url 'report' %}" style="color: inherit; text-decoration: none;">Report</a>
                 </button>
-                <div class="text-center mt-3">
+                {% endif %}
+                <!-- <div class="text-center mt-3">
                     <button class="btn btn-primary" data-toggle="modal" data-target="#dateModal">Download PDF</button>
                 </div>
-            </div>
-            <div class="modal fade" id="dateModal" tabindex="-1" role="dialog" aria-labelledby="dateModalLabel"
+            </div> -->
+            <!-- <div class="modal fade" id="dateModal" tabindex="-1" role="dialog" aria-labelledby="dateModalLabel"
             aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
@@ -238,7 +257,7 @@
                     <div class="modal-body">
                         <div class="form-group">
                             <label for="fromDate">From Date:</label>
-                            <input type="date" id="fromDate" class="form-control">
+                            <input type="date" id="fromDate" class="form-control" value="{{ request.GET.end_date }}" max="{{ today_date }}">
                         </div>
                        
                     </div>
@@ -248,7 +267,7 @@
                     </div>
                     </div>
                 </div>
-            </div>
+            </div> -->
         </div> 
             </div>
         </div>
